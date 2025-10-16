@@ -23,7 +23,7 @@ public class PointService {
     }
 
     private boolean isNegative(long amount) {
-        return amount < 0;
+        return amount <= 0;
     }
 
 
