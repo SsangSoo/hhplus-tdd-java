@@ -17,8 +17,13 @@ public class PointService {
         if(isNegative(amount)) {
             throw new IllegalStateException("충전 포인트를 확인해주세요. 0 이하의 값은 허용할 수 없습니다.");
         }
-        UserPoint userPoint = userPointTable.insertOrUpdate(id, amount);
-        pointHistoryTable.insert(userPoint.id(), userPoint.point(), TransactionType.CHARGE, System.currentTimeMillis());
+
+        long currentPoint = userPointTable.selectById(id).point();
+        long totalPoint = currentPoint + amount;
+
+        UserPoint userPoint = userPointTable.insertOrUpdate(id, totalPoint);
+        pointHistoryTable.insert(id, amount, TransactionType.CHARGE, userPoint.updateMillis());
+
         return userPoint;
     }
 
