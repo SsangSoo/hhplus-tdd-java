@@ -15,7 +15,7 @@ public class PointService {
 
     public UserPoint charge(long id, long amount) {
         if(isNegative(amount)) {
-            throw new IllegalStateException("충전 포인트를 확인해주세요. 0 이하의 값은 허용할 수 없습니다.");
+            throw new IllegalStateException("충전 포인트를 확인해주세요. 0 이하의 포인트는 충전할 수 없습니다.");
         }
 
         long currentPoint = userPointTable.selectById(id).point();
@@ -32,4 +32,17 @@ public class PointService {
     }
 
 
+    public UserPoint use(long id, long amount) {
+        if(isNegative(amount)) {
+            throw new IllegalStateException("사용할 포인트를 확인해보세요. 0 이하의 포인트는 사용할 수 없습니다.");
+        }
+
+        long currentTime = userPointTable.selectById(id).point();
+        long totalPoint = currentTime - amount;
+
+        UserPoint userPoint = userPointTable.insertOrUpdate(id, totalPoint);
+        pointHistoryTable.insert(id, amount, TransactionType.USE, userPoint.updateMillis());
+
+        return userPoint;
+    }
 }

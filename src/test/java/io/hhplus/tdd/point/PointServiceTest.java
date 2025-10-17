@@ -74,7 +74,7 @@ class PointServiceTest {
         // when // then
         Assertions.assertThatThrownBy(() -> pointService.charge(id, amount))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 값은 허용할 수 없습니다.");
+                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 포인트는 충전할 수 없습니다.");
     }
 
     @Test
@@ -87,7 +87,7 @@ class PointServiceTest {
         // when // then
         Assertions.assertThatThrownBy(() -> pointService.charge(id, amount))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 값은 허용할 수 없습니다.");
+                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 포인트는 충전할 수 없습니다.");
     }
 
     @Test
@@ -171,7 +171,7 @@ class PointServiceTest {
         // when
         assertThatThrownBy(() -> pointService.charge(id, amount))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 값은 허용할 수 없습니다.");
+                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 포인트는 충전할 수 없습니다.");
 
         // then
         UserPoint userPoint = userPointTable.selectById(id);
@@ -189,7 +189,7 @@ class PointServiceTest {
         // when
         assertThatThrownBy(() -> pointService.charge(id, amount))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 값은 허용할 수 없습니다.");
+                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 포인트는 충전할 수 없습니다.");
 
         // then
         assertThat(pointHistoryTable.selectAllByUserId(userId)).hasSize(0);
@@ -209,11 +209,87 @@ class PointServiceTest {
         // when
         assertThatThrownBy(() -> pointService.charge(id, secondAmount))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 값은 허용할 수 없습니다.");
+                .hasMessage("충전 포인트를 확인해주세요. 0 이하의 포인트는 충전할 수 없습니다.");
 
         // then
         assertThat(pointHistoryTable.selectAllByUserId(userId)).hasSize(1);
         assertThat(userPointTable.selectById(id).point()).isEqualTo(firstAmount);
+    }
+
+    @Test
+    @DisplayName("포인트를 사용한다.")
+    void usePointTest() {
+        // given
+        long id = userId;
+        long amount = 300L;
+
+        pointService.charge(id, amount);
+
+        long useAmount = 100L;
+
+        long totalAmount = amount - useAmount;
+
+        // when
+        UserPoint userPoint = pointService.use(id, useAmount);
+
+        // then
+        assertThat(userPoint.point()).isEqualTo(totalAmount);
+    }
+
+    @Test
+    @DisplayName("사용하려는 포인트가 0원 이하이면 안 된다.")
+    void usePointIsNegativeTest() {
+        // given
+        long id = userId;
+        long useAmount = 0L;
+
+        // when // then
+        assertThatThrownBy(() -> pointService.use(id, useAmount))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("사용할 포인트를 확인해보세요. 0 이하의 포인트는 사용할 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("사용하려는 포인트가 음수이면 안 된다.")
+    void usePointIsNegativeTestTwo() {
+        // given
+        long id = userId;
+        long useAmount = -1L;
+
+        // when // then
+        assertThatThrownBy(() -> pointService.use(id, useAmount))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("사용할 포인트를 확인해보세요. 0 이하의 포인트는 사용할 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("사용하려는 포인트가 0이하이면 사용이 안 되었으므로, 현재포인트가 남아있어야 한다.")
+    void usePointIsNegativeThenPointEqaulsCurrentPointTest() {
+        // given
+        long id = userId;
+        long amount = 300L;
+
+        pointService.charge(id, amount);
+
+        long useAmount = -1L;
+
+        assertThatThrownBy(() -> pointService.use(id, useAmount))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("사용할 포인트를 확인해보세요. 0 이하의 포인트는 사용할 수 없습니다.");
+
+        // then
+        assertThat(userPointTable.selectById(id).point()).isEqualTo(amount);
+    }
+
+    @Test
+    @DisplayName("사용하려는 포인트가 기존의 포인트보다 많으면 안 된다.")
+    void usePointIsNotBeMoreThanTheExistingPoints() {
+        // given
+
+        // when
+
+        // then
+
     }
 
 
