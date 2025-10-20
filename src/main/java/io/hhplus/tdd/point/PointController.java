@@ -1,8 +1,6 @@
 package io.hhplus.tdd.point;
 
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,7 +10,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PointController {
 
-    private static final Logger log = LoggerFactory.getLogger(PointController.class);
     private final PointService pointService;
 
     /**
@@ -22,7 +19,7 @@ public class PointController {
     public UserPoint point(
             @PathVariable long id
     ) {
-        return new UserPoint(0, 0, 0);
+        return pointService.point(id);
     }
 
     /**
@@ -32,7 +29,7 @@ public class PointController {
     public List<PointHistory> history(
             @PathVariable long id
     ) {
-        return List.of();
+        return pointService.history(id);
     }
 
     /**
@@ -43,8 +40,7 @@ public class PointController {
             @PathVariable long id,
             @RequestBody long amount
     ) {
-        UserPoint userPoint = pointService.charge(id, amount);
-        return userPoint;
+        return pointService.charge(id, amount);
     }
 
     /**
@@ -55,7 +51,6 @@ public class PointController {
             @PathVariable long id,
             @RequestBody long amount
     ) {
-        UserPoint userPoint = pointService.use(id, amount);
-        return new UserPoint(0, 0, 0);
+        return pointService.use(id, amount);
     }
 }
