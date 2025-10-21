@@ -5,7 +5,6 @@ import io.hhplus.tdd.database.UserPointTable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -17,7 +16,6 @@ import static org.assertj.core.api.Assertions.*;
 
 
 @SpringBootTest
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PointServiceIntegrationTest {
 
     static long userId = 1L;
@@ -286,8 +284,5 @@ class PointServiceIntegrationTest {
         assertThat(idSet).hasSize(1);
         assertThat(idSet).containsExactlyInAnyOrder(id);
     }
-
-
-
 
 }

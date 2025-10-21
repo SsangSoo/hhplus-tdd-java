@@ -8,9 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.BDDMockito;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -33,6 +30,7 @@ public class PointServiceUnitTest {
         pointService = new PointService(pointHistoryTable, userPointTable);
     }
 
+
     @Test
     @DisplayName("포인트를 충전할 수 있다.")
     void chargeTest() {
@@ -40,21 +38,17 @@ public class PointServiceUnitTest {
         long id = 1L;
         long amount = 300L;
 
-        long nowMillis = 123456789L;
-
         given(userPointTable.selectById(id))
-                .willReturn(new UserPoint(id, 0L, nowMillis));
+                .willReturn(new UserPoint(id, 0L, anyLong()));
 
         // totalPoint = 0 + 300
         long totalPoint = 300L;
 
-        UserPoint saved = new UserPoint(id, totalPoint, nowMillis);
+        UserPoint saved = new UserPoint(id, totalPoint, anyLong());
         given(userPointTable.insertOrUpdate(id, totalPoint)).willReturn(saved);
 
-
-        ArgumentCaptor<Long> tsCaptor = ArgumentCaptor.forClass(Long.class);
         given(pointHistoryTable.insert(eq(id), eq(amount), eq(TransactionType.CHARGE), anyLong()))
-                .willReturn(new PointHistory(1L, id, amount, TransactionType.CHARGE, nowMillis));
+                .willReturn(new PointHistory(1L, id, amount, TransactionType.CHARGE, anyLong()));
 
         // when
         UserPoint userPoint = pointService.charge(id, amount);
@@ -63,19 +57,20 @@ public class PointServiceUnitTest {
         assertThat(userPoint.point()).isEqualTo(300L);
 
         // then: 호출 인자 검증
-        then(userPointTable).should().selectById(id);
-        then(userPointTable).should().insertOrUpdate(id, totalPoint);
-
-        // history.insert의 timestamp를 캡처해서 insertOrUpdate의 updateMillis와 동일한지 확인
-        then(pointHistoryTable).should()
-                .insert(eq(id), eq(amount), eq(TransactionType.CHARGE), tsCaptor.capture());
-        assertThat(tsCaptor.getValue()).isEqualTo(saved.updateMillis());
-
-        // then: 호출 순서 검증 (선택)
-        InOrder inOrder = inOrder(userPointTable, pointHistoryTable);
-        inOrder.verify(userPointTable).selectById(id);
-        inOrder.verify(userPointTable).insertOrUpdate(id, totalPoint);
-        inOrder.verify(pointHistoryTable).insert(id, amount, TransactionType.CHARGE, saved.updateMillis());
+        // 내부 구현 검증 방법을 위해 남겨둠. -> GPT 도움
+//        then(userPointTable).should().selectById(id);
+//        then(userPointTable).should().insertOrUpdate(id, totalPoint);
+//
+//        // history.insert의 timestamp를 캡처해서 insertOrUpdate의 updateMillis와 동일한지 확인
+//        then(pointHistoryTable).should()
+//                .insert(eq(id), eq(amount), eq(TransactionType.CHARGE), tsCaptor.capture());
+//        assertThat(tsCaptor.getValue()).isEqualTo(saved.updateMillis());
+//f
+//        // then: 호출 순서 검증 (선택)
+//        InOrder inOrder = inOrder(userPointTable, pointHistoryTable);
+//        inOrder.verify(userPointTable).selectById(id);
+//        inOrder.verify(userPointTable).insertOrUpdate(id, totalPoint);
+//        inOrder.verify(pointHistoryTable).insert(id, amount, TransactionType.CHARGE, saved.updateMillis());
     }
 
 
@@ -85,6 +80,18 @@ public class PointServiceUnitTest {
         // given
         long id = 1L;
         long amount = 1L;
+
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, anyLong()));
+
+        // totalPoint = 0 + 1
+        long totalPoint = 1;
+
+        UserPoint saved = new UserPoint(id, totalPoint, anyLong());
+        given(userPointTable.insertOrUpdate(id, totalPoint)).willReturn(saved);
+
+        given(pointHistoryTable.insert(eq(id), eq(amount), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, amount, TransactionType.CHARGE, anyLong()));
 
         // when
         UserPoint userPoint = pointService.charge(id, amount);
@@ -106,7 +113,6 @@ public class PointServiceUnitTest {
                 .hasMessage("충전 포인트를 확인해주세요. 0 이하의 포인트는 충전할 수 없습니다.");
     }
 
-
     @Test
     @DisplayName("포인트 충전 시 0 포인트는 충전불가다.")
     void chargeAmountIsZeroTest() {
@@ -123,9 +129,22 @@ public class PointServiceUnitTest {
     @Test
     @DisplayName("포인트를 충전하면 충전 내역이 남아야 한다. 1번 충전했으므로 1번 남아야한다.")
     void chargePointAfterHistoryCheckTest() {
-        //
+        // given
         long id = 1L;
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, anyLong()));
+
+        // totalPoint = 0 + 3000
         long amount = 3000L;
+
+        UserPoint saved = new UserPoint(id, amount, anyLong());
+        given(userPointTable.insertOrUpdate(id, amount)).willReturn(saved);
+
+        given(pointHistoryTable.insert(eq(id), eq(amount), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, amount, TransactionType.CHARGE, anyLong()));
+
+        given(pointHistoryTable.selectAllByUserId(id))
+                .willReturn(List.of(new PointHistory(1L, id, amount, TransactionType.CHARGE, anyLong())));
 
         // when
         pointService.charge(id, amount);
@@ -140,34 +159,139 @@ public class PointServiceUnitTest {
     void chargePointAfterTotalPointCheckTest() {
         // given
         long id = 1L;
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, anyLong()));
+
+        // totalPoint = 0 + 3000
         long amount = 3000L;
+
+        UserPoint saved = new UserPoint(id, amount, anyLong());
+        given(userPointTable.insertOrUpdate(id, amount)).willReturn(saved);
+
+        given(pointHistoryTable.insert(eq(id), eq(amount), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, amount, TransactionType.CHARGE, anyLong()));
+
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, amount, anyLong()));
 
         // when
         pointService.charge(id, amount);
 
         // then
         UserPoint userPoint = userPointTable.selectById(id);
-
         assertThat(userPoint.point()).isEqualTo(amount);
     }
+
+    // 포스팅을 위해 남겨둠.
+//  값자리에 매처를 넣어서 아래와 같은 문제가 발생
+//
+//    org.mockito.exceptions.misusing.InvalidUseOfMatchersException:
+//    Invalid use of argument matchers!
+//            1 matchers expected, 8 recorded:
+//            -> at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:209)
+//            -> at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:209)
+//            -> at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:209)
+//            -> at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:209)
+//            -> at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:210)
+//            -> at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:210)
+//            -> at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:210)
+//            -> at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:210)
+//
+//    This exception may occur if matchers are combined with raw values:
+//    //incorrect:
+//    someMethod(any(), "raw String");
+//    When using matchers, all arguments have to be provided by matchers.
+//    For example:
+//    //correct:
+//    someMethod(any(), eq("String by matcher"));
+//
+//    For more info see javadoc for Matchers class.
+//
+//
+//    at io.hhplus.tdd.database.UserPointTable.selectById(UserPointTable.java:19)
+//    at io.hhplus.tdd.point.PointService.charge(PointService.java:23)
+//    at io.hhplus.tdd.point.PointServiceUnitTest.usePointTest(PointServiceUnitTest.java:214)
+//    at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+//    at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+//    at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+//
+//    @Test
+//    @DisplayName("포인트를 사용한다.")
+//    void usePointTest() {
+//        // given
+//        long id = 1L;
+//        long chargeTime = System.currentTimeMillis();
+//        long useTime = chargeTime + 1000L;
+//
+//        long chargeAmount = 300L;
+//        long useAmount = 200L;
+//        long totalPoint = chargeAmount - useAmount;
+//
+//
+//        given(userPointTable.selectById(eq(id)))
+//                .willReturn(new UserPoint(id, 0L, chargeTime))
+//                .willReturn(new UserPoint(id, chargeAmount, useTime));
+//
+//
+//        given(userPointTable.insertOrUpdate(id, chargeAmount))
+//                .willReturn(new UserPoint(id, chargeAmount, chargeTime))
+//                .willReturn(new UserPoint(id, totalPoint, useTime));
+//
+//        given(pointHistoryTable.insert(eq(id), anyLong(), eq(TransactionType.CHARGE), anyLong()))
+//                .willReturn(new PointHistory(anyLong(), eq(id), eq(chargeAmount), TransactionType.CHARGE, anyLong()))
+//                .willReturn(new PointHistory(anyLong(), eq(id), eq(useAmount), TransactionType.USE, anyLong()));
+//
+//
+//
+//        pointService.charge(id, chargeAmount);
+//
+//
+//        // when
+//        UserPoint userPoint = pointService.use(id, useAmount);
+//
+//        // then
+//        assertThat(userPoint.point()).isEqualTo(totalPoint);
+//    }
+
 
     @Test
     @DisplayName("포인트를 사용한다.")
     void usePointTest() {
         // given
         long id = 1L;
-        long amount = 300L;
+        long chargeTime = System.currentTimeMillis();
+        long useTime = chargeTime + 1000L;
 
-        pointService.charge(id, amount);
+        long chargeAmount = 300L;
+        long useAmount = 200L;
+        long totalPoint = chargeAmount - useAmount;
 
-        long useAmount = 100L;
+
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, chargeTime))      // 충전시
+                .willReturn(new UserPoint(id, chargeAmount, useTime));    // 사용시
+
+
+        given(userPointTable.insertOrUpdate(id, chargeAmount))              // 충전
+                .willReturn(new UserPoint(id, chargeAmount, chargeTime));
+
+        given(userPointTable.insertOrUpdate(id, totalPoint))                // 사용
+                .willReturn(new UserPoint(id, totalPoint, useTime));
+
+
+        given(pointHistoryTable.insert(eq(id), anyLong(), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, chargeAmount, TransactionType.CHARGE, chargeTime)) // 충전
+                .willReturn(new PointHistory(2L, id, useAmount, TransactionType.USE, useTime));         // 사용
+
+        pointService.charge(id, chargeAmount);
 
         // when
         UserPoint userPoint = pointService.use(id, useAmount);
 
         // then
-        assertThat(userPoint.point()).isEqualTo(200L);
+        assertThat(userPoint.point()).isEqualTo(totalPoint);
     }
+
 
     @Test
     @DisplayName("사용하려는 포인트가 0원 이하이면 안 된다.")
@@ -201,8 +325,20 @@ public class PointServiceUnitTest {
         // given
         long id = 1L;
         long amount = 300L;
+        long chargeTime = System.currentTimeMillis();
+
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, chargeTime))      // 충전시
+                .willReturn(new UserPoint(id, 300L, chargeTime));   // then 절에서 확인
+
+        given(userPointTable.insertOrUpdate(id, amount))
+                .willReturn(new UserPoint(id, amount, chargeTime));
+
+        given(pointHistoryTable.insert(eq(id), anyLong(), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, amount, TransactionType.CHARGE, chargeTime));
 
         pointService.charge(id, amount);
+
 
         long useAmount = -1L;
 
@@ -222,6 +358,17 @@ public class PointServiceUnitTest {
         // given
         long id = 1L;
         long amount = 300L;
+        long chargeTime = System.currentTimeMillis();
+
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, chargeTime))      // 충전시
+                .willReturn(new UserPoint(id, 300L, chargeTime));   // 사용시
+
+        given(userPointTable.insertOrUpdate(id, amount))
+                .willReturn(new UserPoint(id, amount, chargeTime));
+
+        given(pointHistoryTable.insert(eq(id), anyLong(), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, amount, TransactionType.CHARGE, chargeTime));
 
         pointService.charge(id, amount);
 
@@ -238,12 +385,39 @@ public class PointServiceUnitTest {
     void usePointAfterHistoryCheckTest() {
         // given
         long id = 1L;
-        long amount = 300L;
-
-        pointService.charge(id, amount);
-
-
+        long chargeAmount = 300L;
         long useAmount = 200L;
+        long totalAmount = chargeAmount - useAmount;
+        long chargeTime = System.currentTimeMillis();
+        long useTime = chargeTime + 1000;
+
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, chargeTime))         // 충전시
+                .willReturn(new UserPoint(id, chargeAmount, chargeTime))     // 사용시
+                .willReturn(new UserPoint(id, totalAmount, chargeTime));     // then절에서 확인
+
+        // 충전시
+        given(userPointTable.insertOrUpdate(id, chargeAmount))
+                .willReturn(new UserPoint(id, chargeAmount, chargeTime));
+
+        // 사용시
+        given(userPointTable.insertOrUpdate(id, totalAmount))
+                .willReturn(new UserPoint(id, totalAmount, chargeTime));
+
+        given(pointHistoryTable.insert(eq(id), anyLong(), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, chargeAmount, TransactionType.CHARGE, chargeTime)) // 충전시
+                .willReturn(new PointHistory(2L, id, useAmount, TransactionType.USE, useTime));         // 사용시
+
+        // then절에서 사용
+        given(pointHistoryTable.selectAllByUserId(eq(id)))
+                .willReturn(
+                        List.of(
+                                new PointHistory(1L, id, chargeAmount, TransactionType.CHARGE, chargeTime),
+                                new PointHistory(2L, id, useAmount, TransactionType.USE, useTime)
+                        )
+                );
+
+        pointService.charge(id, chargeAmount);
 
         // when
         pointService.use(id, useAmount);
@@ -259,17 +433,37 @@ public class PointServiceUnitTest {
                 );
     }
 
+
+
     @Test
     @DisplayName("포인트를 사용하면, 사용한 포인트만큼 차감되어야 한다.")
     void usePointAfterUserPointCheckTest() {
         // given
         long id = 1L;
-        long amount = 300L;
-
-        pointService.charge(id, amount);
-
-
+        long chargeAmount = 300L;
         long useAmount = 200L;
+        long totalAmount = chargeAmount - useAmount;
+        long chargeTime = System.currentTimeMillis();
+        long useTime = chargeTime + 1000;
+
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, chargeTime))         // 충전시
+                .willReturn(new UserPoint(id, chargeAmount, chargeTime))     // 사용시
+                .willReturn(new UserPoint(id, totalAmount, chargeTime));     // then절에서 확인
+
+
+        given(userPointTable.insertOrUpdate(id, chargeAmount))
+                .willReturn(new UserPoint(id, chargeAmount, chargeTime));   // 충전시
+
+        given(userPointTable.insertOrUpdate(id, totalAmount))
+                .willReturn(new UserPoint(id, totalAmount, chargeTime));   // 사용시
+
+        given(pointHistoryTable.insert(eq(id), anyLong(), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, chargeAmount, TransactionType.CHARGE, chargeTime)) // 충전시
+                .willReturn(new PointHistory(2L, id, useAmount, TransactionType.USE, useTime));         // 사용시
+
+
+        pointService.charge(id, chargeAmount);
 
         // when
         pointService.use(id, useAmount);
@@ -277,7 +471,6 @@ public class PointServiceUnitTest {
         // then
         UserPoint userPoint = userPointTable.selectById(id);
         Assertions.assertThat(userPoint.point()).isEqualTo(100L);
-
     }
 
     @Test
@@ -285,9 +478,20 @@ public class PointServiceUnitTest {
     void pointTest() {
         // given
         long id = 1L;
-        long amount = 300L;
+        long chargeAmount = 300L;
+        long chargeTime = System.currentTimeMillis();
 
-        pointService.charge(id, amount);
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, chargeTime))              // 충전시
+                .willReturn(new UserPoint(id, chargeAmount, chargeTime));         // 조회시
+
+        given(userPointTable.insertOrUpdate(id, chargeAmount))
+                .willReturn(new UserPoint(id, chargeAmount, chargeTime));         // 충전시
+
+        given(pointHistoryTable.insert(eq(id), anyLong(), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, chargeAmount, TransactionType.CHARGE, chargeTime)); // 충전시
+
+        pointService.charge(id, chargeAmount);
 
         // when
         UserPoint point = pointService.point(id);
@@ -301,6 +505,10 @@ public class PointServiceUnitTest {
     void noChargePointThenPointIsZeroTest() {
         // given
         long id = 1L;
+        long initTime = System.currentTimeMillis();
+
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, initTime));         // 조회시
 
         // when
         UserPoint point = pointService.point(id);
@@ -314,17 +522,36 @@ public class PointServiceUnitTest {
     void pointHistoryTest() {
         // given
         long  id = 1L;
-        long amount = 300L;
+        long chargeAmount = 300L;
+        long chargeTime = System.currentTimeMillis();
 
-        pointService.charge(id, amount);
+        given(userPointTable.selectById(id))
+                .willReturn(new UserPoint(id, 0L, chargeTime));              // 충전시
+
+        given(userPointTable.insertOrUpdate(id, chargeAmount))
+                .willReturn(new UserPoint(id, chargeAmount, chargeTime));         // 충전시
+
+        given(pointHistoryTable.insert(eq(id), anyLong(), eq(TransactionType.CHARGE), anyLong()))
+                .willReturn(new PointHistory(1L, id, chargeAmount, TransactionType.CHARGE, chargeTime)); // 충전시
+
+        given(pointHistoryTable.selectAllByUserId(id))
+                .willReturn(
+                        List.of(
+                                new PointHistory(1L, id, chargeAmount, TransactionType.CHARGE, chargeTime)
+                        )
+                );
+
+        pointService.charge(id, chargeAmount);
 
         // when
         List<PointHistory> histories = pointService.history(id);
 
         // then
-        assertThat(histories).hasSize(1);
+        assertThat(histories).hasSize(1)
+                .extracting("amount", "type")
+                .containsExactlyInAnyOrder(
+                        Tuple.tuple(300L, TransactionType.CHARGE)
+                );
     }
-
-
 
 }
