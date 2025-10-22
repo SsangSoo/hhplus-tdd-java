@@ -56,8 +56,6 @@ class PointServiceIntegrationTest {
     }
 
 
-
-
     @Test
     @DisplayName("포인트를 3번 충전했다면, 합산된 포인트만큼 충전되어 있어야 한다.")
     void threeTimesChargePointAfterTotalPointCheckTest() {
@@ -186,8 +184,8 @@ class PointServiceIntegrationTest {
 
         // then
         assertThat(point.point()).isEqualTo(1500L);
-
     }
+
 
     @Test
     @DisplayName("포인트를 충전하고, 포인트를 사용하지 못 했을 때 포인트를 조회하면 그대로 잔액을 조회할 수 있어야 한다.")
